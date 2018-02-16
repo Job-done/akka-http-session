@@ -2,14 +2,15 @@ package com.softwaremill.example.session
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
-import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.server.Directives.{path, post}
 import akka.stream.ActorMaterializer
-import com.softwaremill.session.SessionDirectives._
-import com.softwaremill.session.SessionOptions._
-import com.softwaremill.session._
+import com.softwaremill.example.completeOK
+import com.softwaremill.session.{InMemoryRefreshTokenStorage, SessionConfig, SessionManager}
+import com.softwaremill.session.SessionDirectives.{setSession,requiredSession,invalidateSession}
+import com.softwaremill.session.SessionOptions.{refreshable, usingCookies}
 import com.typesafe.scalalogging.StrictLogging
 
-import scala.io.StdIn
+import scala.util.{Failure, Success}
 
 object SessionInvalidationScala extends App with StrictLogging {
   implicit val system = ActorSystem("example")
@@ -32,25 +33,25 @@ object SessionInvalidationScala extends App with StrictLogging {
     path("logout") {
       post {
         myRequiredSession { session =>
-          myInvalidateSession { ctx =>
+          myInvalidateSession {
             logger.info(s"Logging out $session")
-            ctx.complete("ok")
+            completeOK
           }
         }
       }
     }
 
-  val bindingFuture = Http().bindAndHandle(routes, "localhost", 8080)
+  val bindingFuture = Http().bindAndHandle(routes, httpHost, httpPort)
 
-  println("Server started, press enter to stop. Visit http://localhost:8080 to see the demo.")
-  StdIn.readLine()
+  def httpHost = "localhost"
 
-  import system.dispatcher
+  def httpPort = 8080
 
-  bindingFuture
-    .flatMap(_.unbind())
-    .onComplete { _ =>
+  bindingFuture.onComplete {
+    case Success(Http.ServerBinding(localAddress)) => logger.info("Listening on {}", localAddress)
+    case Failure(cause) =>
+      logger.error(/*cause,*/ s"Terminating, because can't bind to http://$httpHost:$httpPort!")
       system.terminate()
-      println("Server stopped")
-    }
+  }
+
 }

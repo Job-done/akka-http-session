@@ -51,7 +51,7 @@ public class JavaExample extends HttpSessionAwareDirectives<MyJavaSession> {
     private Refreshable<MyJavaSession> refreshable;
     private SetSessionTransport sessionTransport;
 
-    public JavaExample(MessageDispatcher dispatcher) {
+    private JavaExample(MessageDispatcher dispatcher) {
         super(new SessionManager<>(
                 SessionConfig.defaultConfig(SECRET),
                 BASIC_ENCODER
@@ -81,12 +81,8 @@ public class JavaExample extends HttpSessionAwareDirectives<MyJavaSession> {
         final Flow<HttpRequest, HttpResponse, NotUsed> routes = app.createRoutes().flow(system, materializer);
         final CompletionStage<ServerBinding> binding = http.bindAndHandle(routes, ConnectHttp.toHost("localhost", 8080), materializer);
 
-        System.out.println("Server started, press enter to stop");
-        System.in.read();
+        System.out.println("Server started.");
 
-        binding
-            .thenCompose(ServerBinding::unbind)
-            .thenAccept(unbound -> system.terminate());
     }
 
     private Route createRoutes() {
@@ -126,7 +122,7 @@ public class JavaExample extends HttpSessionAwareDirectives<MyJavaSession> {
                                                 extractRequestContext(ctx -> {
                                                         LOGGER.info("Logging out {}", session.getUsername());
                                                         return onSuccess(() -> ctx.completeWith(HttpResponse.create()), routeResult ->
-                                                            complete("ok")
+                                                            complete(StatusCodes.OK)
                                                         );
                                                     }
                                                 )
